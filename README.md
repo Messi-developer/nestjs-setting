@@ -2,6 +2,7 @@
 NestJS Version 11
 
 - DataDog
+- Swagger
 - DB(Master, Slave)
 - Repository Pattern
 - .env
