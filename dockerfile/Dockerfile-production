@@ -1,0 +1,60 @@
+FROM node:20
+
+# Build Number
+ARG BUILD_NUMBER
+
+# APP ENV 설정
+ENV TZ=Asia/Seoul \
+    UV_THREADPOOL_SIZE=15 \
+    NODE_ENV=production \
+    APP_PORT=3000
+    # DD_TRACE_RATE_LIMIT=100 \
+    # DD_SERVICE_MAPPING="mysql:prd-town-mysql,redis:prd-town-redis"
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Update npm
+RUN npm install -g npm@10.7.0
+
+# oracle instant client 설치
+RUN apt update && \
+    apt-get install -y \
+        alien \
+        libaio1 \
+        wget \
+        tcpdump \
+        procps \
+        net-tools \
+        iputils-ping && \
+    wget -q https://download.oracle.com/otn_software/linux/instantclient/214000/oracle-instantclient-basic-21.4.0.0.0-1.x86_64.rpm && \
+    alien -i oracle-instantclient-basic-21.4.0.0.0-1.x86_64.rpm && \
+    rm oracle-instantclient-basic-21.4.0.0.0-1.x86_64.rpm && \
+    apt autoremove -y wget && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Working Directory 설정
+WORKDIR /data/new_portal_int_api_bill
+
+# 앱 소스 copy
+COPY ./src ./src
+COPY ./package*.json ./
+COPY ./tsconfig*.json ./
+COPY ./nest-cli.json ./
+
+# DotEnv 설정 복사
+# RUN mkdir -p "core"
+# COPY ./core /data/aiplus-mobile-api/core
+
+# BUILD_NUMBER 값을 .env.prd 파일에 추가
+# RUN echo "" >> /data/aiplus-mobile-api/core/env/.env.prd && \
+#     echo "DATADOG_VERSION=${BUILD_NUMBER}" >> /data/aiplus-mobile-api/core/env/.env.prd
+
+RUN chown -R node:node .
+
+USER node
+
+RUN npm install --legacy-peer-deps && npm cache clean --force
+RUN npm run build
+
+EXPOSE 3000
