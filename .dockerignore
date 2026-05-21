@@ -1,0 +1,8 @@
+.vscode
+.idea
+source/*/dist
+source/*/node_modules
+source/*/.env
+source/*/.vscode
+dockerfile/
+.git
