@@ -1,74 +1,40 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnModuleDestroy } from '@nestjs/common';
 import { Job } from 'bullmq';
-import {
-    PortalOldIntApiService,
-    portalOldIntApiUrl,
-} from '@src/common/api/portal-old-int-api/portal-old-int-api.service';
-import { MemberAlarmRepository } from '@src/member/repositories/member-alarm.repository';
+import { LoggingService } from '@src/common/services/logging.service';
+import { JobHandlerFactory } from './job-handler-factory';
 
 @Processor('aipartner-message-queue', { concurrency: 10 })
-export class QueueProcessorService extends WorkerHost {
+export class QueueProcessorService extends WorkerHost implements OnModuleDestroy {
     public constructor(
-        private readonly portalOldIntApiService: PortalOldIntApiService,
-        private readonly memberAlarmRepository: MemberAlarmRepository,
+        private readonly loggingService: LoggingService,
+        private readonly jobHandlerFactory: JobHandlerFactory,
     ) {
         super();
     }
 
-    async process(job: Job) {
-        switch (job.name) {
-            case `member-alarm-send-message`: // 이실장 알림톡 발송
-                await this.memberAlarmSendMessage(job);
-                break;
-            case `alim-talk-send-message`: // 알림톡 발송
-                await this.alimTalkSendMessage(job);
-                break;
-            case `alim-talk-send-button-message`: // 알림톡 발송 (버튼형)
-                await this.alimTalkSendButtonMessage(job);
-                break;
-            default:
-                return;
+    async onModuleDestroy() {
+        try {
+            await Promise.race([
+                await this.worker.close(),
+
+                new Promise(
+                    (_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000), // 30초 타임아웃
+                ),
+            ]);
+        } catch (error) {
+            await this.loggingService.log(JSON.stringify(error), `BullMQ Worker 종료 실패`);
+            await this.worker.close(true); // Worker 강제종료(failed, stalled 상태로 변경되어 다음 워커에게 넘겨 재실행 처리)
         }
     }
 
-    private async memberAlarmSendMessage(job: Job) {
-        const alarmSeq = await this.memberAlarmRepository.getNextSequenceV2({ seqName: 'MEMBER_ALARM_SEQ' });
+    async process(job: Job) {
+        const handler = await this.jobHandlerFactory.getInstance(job.name);
 
-        await this.memberAlarmRepository.insert({
-            alarmSeq,
-            agencyCd: +job.data.agencyCode,
-            memberCd: +job.data.memberCode,
-            alarmGbn: job.data.alarmGbn,
-            content: job.data.content,
-            sendStatusGbn: 'W',
-        });
-    }
+        if (!handler) {
+            await this.loggingService.log(JSON.stringify(job), `지원하지 않는 작업 이름: ${job.name}`);
+        }
 
-    private async alimTalkSendMessage(job: Job) {
-        await this.portalOldIntApiService.intApiRequest({
-            url: portalOldIntApiUrl.message.sendMessage,
-            method: 'post',
-            data: {
-                recipientNum: job.data.recipientNum.replaceAll(/\D/g, ''),
-                subject: job.data.subject,
-                contents: job.data.contents,
-                templateCode: job.data.templateCode,
-            },
-        });
-    }
-
-    private async alimTalkSendButtonMessage(job: Job) {
-        await this.portalOldIntApiService.intApiRequest({
-            url: portalOldIntApiUrl.message.sendButtonMessage,
-            method: 'post',
-            data: {
-                recipientNum: job.data.recipientNum.replaceAll(/\D/g, ''),
-                subject: job.data.subject,
-                contents: job.data.contents,
-                templateCode: job.data.templateCode,
-                buttonName: job.data.buttonName,
-                buttonUrl: job.data.buttonUrl,
-            },
-        });
+        await handler.process(job);
     }
 }

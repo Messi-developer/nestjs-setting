@@ -3,16 +3,16 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { QueueService } from './queue.service';
 import { QueueProcessorService } from './queue-processor.service';
-import { PortalOldIntApiService } from '@src/common/api/portal-old-int-api/portal-old-int-api.service';
-// Repositories
-import { MemberAlarmRepository } from '@src/member/repositories/member-alarm.repository';
+import { JobHandlerFactory } from './job-handler-factory';
+import { MemberAlarmHandler } from './services/member-alarm-handler';
+import { AlimTalkSendMessageHandler } from './services/alim-talk-send-message-handler';
 
 const providers = [
     QueueService,
     QueueProcessorService,
-    PortalOldIntApiService,
-    // Repositories
-    MemberAlarmRepository,
+    JobHandlerFactory,
+    MemberAlarmHandler,
+    AlimTalkSendMessageHandler,
 ];
 
 export const queues = {
@@ -38,6 +38,11 @@ export const queues = {
             defaultJobOptions: {
                 removeOnComplete: true, // 작업 성공시 삭제
                 removeOnFail: { age: 86400 }, // 실패 작업은 24시간 뒤 자동 삭제
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 1000,
+                },
             },
         }),
     ],
