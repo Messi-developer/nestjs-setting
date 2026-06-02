@@ -1,6 +1,7 @@
 import tracer from 'dd-trace';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ApiResponseInterceptor } from '@src/common/exception/api-response-interceptor';
 import { HttpExceptionFilter } from '@src/common/exception/http-exception.filter';
 import { setupSwagger } from './common/configuration/swagger';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
@@ -48,6 +49,8 @@ async function bootstrap() {
             },
         }),
     );
+
+    app.useGlobalInterceptors(new ApiResponseInterceptor());
 
     app.useGlobalFilters(app.get(HttpExceptionFilter));
 

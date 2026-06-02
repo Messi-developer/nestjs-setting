@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:24
 
 # Build Number
 ARG BUILD_NUMBER
@@ -15,7 +15,7 @@ ENV TZ=Asia/Seoul \
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Update npm
-RUN npm install -g npm@10.7.0
+RUN npm install -g npm@11.8.0
 
 # oracle instant client 설치
 RUN apt update && \
@@ -39,8 +39,9 @@ WORKDIR /data/new_portal_int_api_bill
 
 # 앱 소스 copy
 COPY ./src ./src
-COPY ./package.json ./
-COPY ./tsconfig.json ./
+COPY ./assets ./assets
+COPY ./package*.json ./
+COPY ./tsconfig*.json ./
 COPY ./nest-cli.json ./
 
 # DotEnv 설정 복사
@@ -57,5 +58,6 @@ USER node
 
 RUN npm install --legacy-peer-deps && npm cache clean --force
 RUN npm run build
+RUN rm -rf src
 
 EXPOSE 3000
