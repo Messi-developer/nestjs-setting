@@ -1,3 +1,3 @@
-import * as dayjsLib from 'dayjs';
+import dayjsLib from 'dayjs';
 
 export const dayjs = dayjsLib;

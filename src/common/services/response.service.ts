@@ -1,9 +1,13 @@
-import { Injectable, HttpStatus, HttpException } from '@nestjs/common'
-import { ApiResponse } from './response.interface'
+import { Injectable, HttpStatus, HttpException } from '@nestjs/common';
+import { ApiResponse } from '../interfaces/response.interface';
 
 @Injectable()
 export class ResponseService {
-    async success<T>(data: T, message = data['message'] ? data['message'] : 'Success', statusCode = HttpStatus.OK): Promise<ApiResponse<T>> {
+    async success<T>(
+        data: T,
+        message = data?.['message'] ? data['message'] : 'Success',
+        statusCode = HttpStatus.OK,
+    ): Promise<ApiResponse<T>> {
         const responseData = await this.getResponseData(data);
 
         return {
@@ -11,7 +15,7 @@ export class ResponseService {
             success: true,
             message,
             data: responseData,
-        }
+        };
     }
 
     created<T>(data: T, statusCode = HttpStatus.CREATED, message = 'Resource created successfully'): ApiResponse<T> {
@@ -20,9 +24,9 @@ export class ResponseService {
             success: true,
             message,
             data,
-        }
+        };
     }
-    
+
     deleted(message = 'Resource deleted successfully', statusCode = HttpStatus.OK): ApiResponse<null> {
         return {
             statusCode,
@@ -42,15 +46,16 @@ export class ResponseService {
         let message = 'fromException Error Message';
         let error = null;
 
-        switch(typeof exceptionResponse) {
+        switch (typeof exceptionResponse) {
             case 'string':
                 message = exceptionResponse;
                 break;
-            case 'object':
+            case 'object': {
                 const res = exceptionResponse as Record<string, any>;
                 message = res.message || message;
                 error = res.error || null;
-                break
+                break;
+            }
         }
 
         return {
@@ -63,7 +68,7 @@ export class ResponseService {
     }
 
     private async getResponseData(data: any) {
-        if ('message' in data) {
+        if (data && typeof data === 'object' && 'message' in data) {
             delete data['message'];
         }
 

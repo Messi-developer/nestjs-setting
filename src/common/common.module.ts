@@ -1,21 +1,19 @@
 import { Module, Global } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { Config } from '../common/configuration/config';
-import { RedisCache } from '../common/cache/redis-cache';
-import { RedisCacheService } from '../common/cache/redis-cache.service';
-import { ResponseService } from '../common/services/response.service';
-import { TeamsWebHookService } from '../common/web-hook/teams-web-hook.service';
-import { PortalIntApiModule } from './api/portal-int-api/portal-int-api.module';
-import { CrtptionModule } from './cryption/cryption.module';
-import { QueueModule } from '../common/queue/queue.module';
-import { LoggingService } from '../common/services/logging.service';
-import { PageNationService } from '../common/services/page-nation.service';
+import { Config } from '../config/config';
+import { RedisCache } from './services/cache/redis-cache';
+import { QueueModule } from './services/queue/queue.module';
+import { ResponseService } from './services/response.service';
+import { LoggingService } from './services/logging.service';
+import { PageNationService } from './services/page-nation.service';
+
+const services = [ResponseService, LoggingService, PageNationService];
+const exportedServices = [ResponseService, LoggingService];
 
 @Global()
 @Module({
-    imports: [Config.getModule(), RedisCache.getModule(), HttpModule, PortalIntApiModule, CrtptionModule, QueueModule],
-    providers: [ResponseService, TeamsWebHookService, RedisCacheService, LoggingService, PageNationService],
-    exports: [ResponseService, TeamsWebHookService, RedisCacheService, LoggingService],
-    controllers: [],
+    imports: [Config.getModule(), RedisCache.getModule(), HttpModule, QueueModule],
+    providers: [...services],
+    exports: [...exportedServices],
 })
 export class CommonModule {}
